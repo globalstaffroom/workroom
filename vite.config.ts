@@ -7,7 +7,23 @@ const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // Tauri's WKWebView executes <head> module scripts before body is parsed.
+    // Moving scripts to end of <body> ensures the #root div exists at runtime.
+    {
+      name: 'scripts-to-body',
+      transformIndexHtml(html: string) {
+        const scripts: string[] = []
+        const stripped = html.replace(/<script\b[^>]*src="[^"]*"[^>]*><\/script>/g, (m) => {
+          scripts.push(m)
+          return ''
+        })
+        return stripped.replace('</body>', `${scripts.join('\n')}\n</body>`)
+      },
+    },
+  ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

@@ -1,7 +1,7 @@
 export type ParsedLine =
   | { kind: 'text';     text: string }
   | { kind: 'tool_use'; tool: string; input: string }
-  | { kind: 'complete' }
+  | { kind: 'complete'; result?: string }
   | { kind: 'error';    message: string }
 
 export function parseStreamLine(raw: string): ParsedLine | null {
@@ -12,9 +12,21 @@ export function parseStreamLine(raw: string): ParsedLine | null {
     case 'assistant': {
       const content = (json.message as any)?.content
       if (!Array.isArray(content)) return null
+      // Prefer text block; fall back to tool_use block embedded in assistant message
       const textBlock = content.find((b: any) => b.type === 'text')
-      if (!textBlock) return null
-      return { kind: 'text', text: textBlock.text ?? '' }
+      if (textBlock) return { kind: 'text', text: textBlock.text ?? '' }
+      const toolBlock = content.find((b: any) => b.type === 'tool_use')
+      if (toolBlock) {
+        const tool = toolBlock.name as string
+        const inputObj = toolBlock.input ?? {}
+        const input = tool === 'Bash'
+          ? (inputObj as any).command ?? ''
+          : tool === 'Write' || tool === 'Edit'
+            ? (inputObj as any).file_path ?? ''
+            : JSON.stringify(inputObj).slice(0, 80)
+        return { kind: 'tool_use', tool, input }
+      }
+      return null
     }
     case 'tool_use': {
       const tool = json.name as string
@@ -29,7 +41,7 @@ export function parseStreamLine(raw: string): ParsedLine | null {
     case 'result':
       return json.subtype === 'error'
         ? { kind: 'error', message: (json.error as string) ?? 'unknown error' }
-        : { kind: 'complete' }
+        : { kind: 'complete', result: (json.result as string) ?? undefined }
     default:
       return null
   }

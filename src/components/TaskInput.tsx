@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useOrchestrator } from '../hooks/useOrchestrator'
+import { useShallow } from 'zustand/react/shallow'
+import { send } from '../hooks/useOrchestrator'
 import { useAgentStore } from '../store/agentStore'
 
 export function TaskInput() {
   const [task, setTask] = useState('')
   const [agentId, setAgentId] = useState('coder')
-  const agents = useAgentStore(s => Object.values(s.agents))
-  const { send } = useOrchestrator()
+  const agents = useAgentStore(useShallow(s => Object.values(s.agents)))
 
   const assign = () => {
     if (!task.trim()) return

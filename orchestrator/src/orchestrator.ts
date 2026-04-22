@@ -5,7 +5,7 @@ import { parseStreamLine, parsedToBubble } from './parser'
 import { getWorktreePath } from './worktree'
 import { pickChaosEvent } from './dramaEngine'
 import { generateReaction } from './haiku'
-import type { AgentState, Zone, WsMessage, UiCommand } from '../../src/types'
+import type { AgentState, Zone, WsMessage, UiCommand, AgentStatus } from '../../src/types'
 
 type Broadcast = (msg: WsMessage) => void
 
@@ -18,11 +18,22 @@ export class Orchestrator {
 
   setBroadcast(fn: Broadcast) { this.broadcast = fn }
 
+  private buildAgentState(agentId: string, status: AgentStatus = 'idle'): AgentState | null {
+    const a = getAgent(this.db, agentId)
+    if (!a) return null
+    return {
+      id: a.id, name: a.name, sprite: a.sprite,
+      mood: a.mood, zone: a.zone as Zone,
+      status, bubble: null, progress: 0,
+    }
+  }
+
   getState() {
     const agents = getAllAgents(this.db).map(a => ({
       id: a.id, name: a.name, sprite: a.sprite,
       mood: a.mood, zone: a.zone as Zone,
-      status: 'idle' as const, bubble: null, progress: 0,
+      status: (this.runners.has(a.id) ? 'working' : 'idle') as AgentStatus,
+      bubble: null, progress: 0,
     }))
     return { agents }
   }
@@ -91,7 +102,7 @@ export class Orchestrator {
           mood: newMood, dramaLevel: this.dramaLevel,
           event: event.description,
         })
-        this.broadcast({ type: 'bubble', agentId, text: reaction, durationMs: 5000 })
+        this.broadcast({ type: 'bubble', agentId, text: reaction, durationMs: 10000 })
         this.broadcast({ type: 'feed_entry', entry: {
           id: `react-${Date.now()}-${agentId}`, agentId, color: agentColor(agentId),
           message: reaction, timestamp: Date.now(),
@@ -103,11 +114,21 @@ export class Orchestrator {
   private assignTask(agentId: string, task: string) {
     if (!task) return
 
+    // Double-start guard: kill existing runner before starting a new one
+    const existingRunner = this.runners.get(agentId)
+    if (existingRunner) {
+      console.warn(`[orchestrator] agent ${agentId} already working — killing previous runner`)
+      existingRunner.kill()
+      this.runners.delete(agentId)
+    }
+
     const worktreePath = getWorktreePath(agentId)
     logEvent(this.db, { type: 'task_assigned', agent: agentId, payload: { task } })
 
     updateZone(this.db, agentId, 'work_area')
-    this.broadcast({ type: 'zone_changed', agentId, zone: 'work_area' })
+    const workingAgent = this.buildAgentState(agentId, 'working')
+    if (workingAgent) this.broadcast({ type: 'agent_updated', agent: workingAgent })
+
     this.broadcast({ type: 'feed_entry', entry: {
       id: `${Date.now()}`, agentId, color: agentColor(agentId),
       message: `→ ${task}`, timestamp: Date.now(),
@@ -120,7 +141,7 @@ export class Orchestrator {
 
         const bubble = parsedToBubble(parsed)
         if (bubble) {
-          this.broadcast({ type: 'bubble', agentId, text: bubble, durationMs: 4000 })
+          this.broadcast({ type: 'bubble', agentId, text: bubble, durationMs: 10000 })
           this.broadcast({ type: 'feed_entry', entry: {
             id: `${Date.now()}-${Math.random()}`, agentId, color: agentColor(agentId),
             message: bubble, timestamp: Date.now(),
@@ -130,22 +151,33 @@ export class Orchestrator {
 
       if (event.type === 'complete') {
         deltaMood(this.db, agentId, +10)
+        this.runners.delete(agentId)
         updateZone(this.db, agentId, 'lounge')
-        this.broadcast({ type: 'zone_changed', agentId, zone: 'lounge' })
+        const idleAgent = this.buildAgentState(agentId, 'idle')
+        if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
+
+        // Broadcast the actual result text if available
+        const resultText = event.result && event.result !== 'done'
+          ? event.result.slice(0, 200)
+          : 'task complete ✓'
         this.broadcast({ type: 'feed_entry', entry: {
           id: `${Date.now()}`, agentId, color: agentColor(agentId),
-          message: 'task complete ✓', timestamp: Date.now(),
+          message: resultText, timestamp: Date.now(),
         }})
-        this.runners.delete(agentId)
       }
 
       if (event.type === 'error') {
         deltaMood(this.db, agentId, -10)
+        this.runners.delete(agentId)
+
+        // Broadcast idle status on error too
+        const idleAgent = this.buildAgentState(agentId, 'idle')
+        if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
+
         this.broadcast({ type: 'feed_entry', entry: {
           id: `${Date.now()}`, agentId, color: agentColor(agentId),
           message: `error: ${event.message}`, timestamp: Date.now(),
         }})
-        this.runners.delete(agentId)
       }
     })
 

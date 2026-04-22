@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow'
 import { useAgentStore } from '../store/agentStore'
 import { Agent } from './Agent'
 import type { Zone } from '../types'
@@ -33,7 +34,7 @@ const ZONE_POSITIONS: Record<Zone, Record<string, { top: number; left: number }>
 const DEFAULT_POS = { top: 200, left: 300 }
 
 export function Room() {
-  const agents = useAgentStore(s => Object.values(s.agents))
+  const agents = useAgentStore(useShallow(s => Object.values(s.agents)))
 
   return (
     <div style={{
@@ -209,7 +210,7 @@ export function Room() {
           <Agent
             key={agent.id}
             agent={agent}
-            style={{ top: pos.top, left: pos.left }}
+            style={{ top: pos.top, left: pos.left, transition: 'top 0.8s ease-in-out, left 0.8s ease-in-out' }}
           />
         )
       })}
