@@ -34,10 +34,12 @@ describe('ensureWorktree', () => {
 })
 
 describe('removeWorktree', () => {
-  it('removes the worktree and branch', () => {
+  it('removes the worktree directory and branch', () => {
     ensureWorktree(TEST_AGENT, REPO_PATH)
     removeWorktree(TEST_AGENT, REPO_PATH)
     expect(fs.existsSync(WORKTREE_PATH)).toBe(false)
+    const branches = execSync(`git -C ${REPO_PATH} branch`, { encoding: 'utf8' })
+    expect(branches).not.toContain(`workroom-${TEST_AGENT}`)
   })
 })
 
