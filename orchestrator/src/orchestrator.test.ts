@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import Database from 'better-sqlite3'
 import { applySchema } from './db/schema'
 import { Orchestrator } from './orchestrator'
+import { getWorktreePath } from './worktree'
 
 let db: Database.Database
 let orch: Orchestrator
@@ -28,5 +29,11 @@ describe('Orchestrator.setDrama', () => {
     expect(orch.dramaLevel).toBe(100)
     orch.setDrama(-10)
     expect(orch.dramaLevel).toBe(0)
+  })
+})
+
+describe('getWorktreePath', () => {
+  it('returns a path containing the agentId', () => {
+    expect(getWorktreePath('coder')).toContain('coder')
   })
 })
