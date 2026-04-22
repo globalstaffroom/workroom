@@ -97,3 +97,15 @@ export function logResult(db: Database.Database, agentId: string, taskId: string
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, `${agentId}-${taskId}.txt`), result, 'utf8')
 }
+
+export function createAgent(
+  db: Database.Database,
+  id: string,
+  sprite: string,
+  personality: string
+): void {
+  db.prepare(`
+    INSERT OR IGNORE INTO agents (id, name, sprite, personality, mood, energy, zone)
+    VALUES (?, ?, ?, ?, 50, 100, 'lounge')
+  `).run(id, id, sprite, personality)
+}

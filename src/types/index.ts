@@ -42,3 +42,4 @@ export type UiCommand =
   | { type: 'set_drama';     level: number }
   | { type: 'fire_chaos' }
   | { type: 'get_state' }
+  | { type: 'create_agent';  id: string; sprite: string; personality: string }
