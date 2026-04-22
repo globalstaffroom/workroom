@@ -3,6 +3,7 @@ import Database from 'better-sqlite3'
 import { applySchema } from './db/schema'
 import { Orchestrator } from './orchestrator'
 import { getWorktreePath } from './worktree'
+import { setContext, getContext } from './db/queries'
 
 let db: Database.Database
 let orch: Orchestrator
@@ -35,5 +36,13 @@ describe('Orchestrator.setDrama', () => {
 describe('getWorktreePath', () => {
   it('returns a path containing the agentId', () => {
     expect(getWorktreePath('coder')).toContain('coder')
+  })
+})
+
+describe('context handoff', () => {
+  it('context written by one agent is readable', () => {
+    setContext(db, 'last_task_summary', 'refactored auth.ts, JWT in middleware', 'coder')
+    const ctx = getContext(db)
+    expect(ctx['last_task_summary']).toContain('JWT')
   })
 })
