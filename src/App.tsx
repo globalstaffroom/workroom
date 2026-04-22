@@ -1,51 +1,27 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useOrchestrator } from './hooks/useOrchestrator'
+import { Room } from './components/Room'
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+export default function App() {
+  useOrchestrator()
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ display: 'flex', height: '100vh', background: '#1a2030', overflow: 'hidden', flexDirection: 'column' }}>
+      {/* Top bar */}
+      <div style={{ background: '#111820', borderBottom: '3px solid #2a3848', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', color: '#fff', letterSpacing: 2 }}>
+          WORK<span style={{ color: '#7ec850' }}>ROOM</span>
+        </span>
+        <span style={{ fontSize: 10, color: '#334', marginLeft: 8 }}>pixel art office</span>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
 
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
-  );
+      {/* Main */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10 }}>
+          <Room />
+        </div>
+        {/* FeedPanel added in Task 8 */}
+        <div style={{ width: 220, background: '#111820', borderLeft: '3px solid #2a3848' }} />
+      </div>
+    </div>
+  )
 }
-
-export default App;
