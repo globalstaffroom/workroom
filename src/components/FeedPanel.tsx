@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useAgentStore } from '../store/agentStore'
 import { useFeedStore } from '../store/feedStore'
@@ -19,9 +20,11 @@ export function FeedPanel() {
   const setDrama = useAgentStore(s => s.setDrama)
   const entries = useFeedStore(s => s.entries)
 
+  const sendDramaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleDramaChange = (level: number) => {
     setDrama(level)
-    send({ type: 'set_drama', level })
+    if (sendDramaTimer.current) clearTimeout(sendDramaTimer.current)
+    sendDramaTimer.current = setTimeout(() => { send({ type: 'set_drama', level }) }, 150)
   }
 
   return (

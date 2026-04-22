@@ -12,6 +12,8 @@ interface AgentStore {
   setDrama: (level: number) => void
 }
 
+const bubbleTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+
 export const useAgentStore = create<AgentStore>((set) => ({
   agents: {},
   dramaLevel: 25,
@@ -20,20 +22,37 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set(s => ({ agents: { ...s.agents, [agent.id]: { ...s.agents[agent.id], ...agent } } })),
 
   setMood: (id, mood) =>
-    set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], mood } } })),
+    set(s => {
+      if (!s.agents[id]) return s
+      return { agents: { ...s.agents, [id]: { ...s.agents[id], mood } } }
+    }),
 
   setZone: (id, zone) =>
-    set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], zone } } })),
+    set(s => {
+      if (!s.agents[id]) return s
+      return { agents: { ...s.agents, [id]: { ...s.agents[id], zone } } }
+    }),
 
   setBubble: (id, text, durationMs) => {
-    set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], bubble: text } } }))
-    setTimeout(() => {
-      set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], bubble: null } } }))
+    set(s => {
+      if (!s.agents[id]) return s
+      return { agents: { ...s.agents, [id]: { ...s.agents[id], bubble: text } } }
+    })
+    if (bubbleTimers[id]) clearTimeout(bubbleTimers[id])
+    bubbleTimers[id] = setTimeout(() => {
+      delete bubbleTimers[id]
+      set(s => {
+        if (!s.agents[id]) return s
+        return { agents: { ...s.agents, [id]: { ...s.agents[id], bubble: null } } }
+      })
     }, durationMs)
   },
 
   setProgress: (id, progress) =>
-    set(s => ({ agents: { ...s.agents, [id]: { ...s.agents[id], progress } } })),
+    set(s => {
+      if (!s.agents[id]) return s
+      return { agents: { ...s.agents, [id]: { ...s.agents[id], progress } } }
+    }),
 
   setDrama: (level) => set({ dramaLevel: level }),
 }))

@@ -6,6 +6,9 @@ import os from 'os'
 const WORKTREE_BASE = path.join(os.homedir(), '.workroom', 'worktrees')
 
 export function ensureWorktree(agentId: string, repoPath: string): string {
+  if (!/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+    throw new Error(`ensureWorktree: invalid agentId "${agentId}"`)
+  }
   fs.mkdirSync(WORKTREE_BASE, { recursive: true })
   const worktreePath = path.join(WORKTREE_BASE, agentId)
   if (fs.existsSync(path.join(worktreePath, '.git'))) return worktreePath
@@ -18,7 +21,10 @@ export function ensureWorktree(agentId: string, repoPath: string): string {
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? (err as NodeJS.ErrnoException & { stderr?: Buffer }).stderr?.toString() ?? err.message : String(err)
-    if (!msg.includes('already exists')) throw err
+    if (!msg.includes('already exists') && !msg.includes('already registered')) throw err
+    try {
+      execSync(`git worktree prune`, { cwd: repoPath, stdio: 'pipe' })
+    } catch {}
     execSync(`git worktree add ${worktreePath} ${branch}`, {
       cwd: repoPath,
       stdio: 'pipe',

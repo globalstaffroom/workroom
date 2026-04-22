@@ -53,10 +53,8 @@ export function getRecentEvents(db: Database.Database, limit: number): WorkroomE
 
 export function getRelationship(db: Database.Database, a: string, b: string): Relationship {
   const [first, second] = [a, b].sort()
-  const rel = db.prepare('SELECT * FROM relationships WHERE agent_a = ? AND agent_b = ?').get(first, second) as Relationship | undefined
-  if (rel) return rel
   db.prepare('INSERT OR IGNORE INTO relationships (agent_a, agent_b) VALUES (?, ?)').run(first, second)
-  return { agent_a: first, agent_b: second, trust: 50, tension: 0, history_count: 0 }
+  return db.prepare('SELECT * FROM relationships WHERE agent_a = ? AND agent_b = ?').get(first, second) as Relationship
 }
 
 export function deltaTension(db: Database.Database, a: string, b: string, delta: number): void {
@@ -93,9 +91,13 @@ export function logResult(db: Database.Database, agentId: string, taskId: string
     agentId,
     JSON.stringify({ taskId, result })
   )
-  const dir = path.join(os.homedir(), '.workroom', 'results')
-  fs.mkdirSync(dir, { recursive: true })
-  fs.writeFileSync(path.join(dir, `${agentId}-${taskId}.txt`), result, 'utf8')
+  try {
+    const dir = path.join(os.homedir(), '.workroom', 'results')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, `${agentId}-${taskId}.txt`), result, 'utf8')
+  } catch (err) {
+    console.error('[queries] logResult: failed to write result file:', err)
+  }
 }
 
 export function createAgent(

@@ -3,6 +3,8 @@ import { EventEmitter } from 'events'
 import fs from 'fs'
 import os from 'os'
 
+const TASK_TIMEOUT_MS = 5 * 60 * 1000
+
 function findClaude(): string {
   const home = os.homedir()
   const candidates = [
@@ -26,6 +28,8 @@ type OnEvent = (event: RunnerEvent) => void
 
 export class AgentRunner extends EventEmitter {
   private process: ChildProcess | null = null
+  private watchdog: ReturnType<typeof setTimeout> | null = null
+  private killed = false
   isRunning = false
 
   constructor(
@@ -51,17 +55,31 @@ export class AgentRunner extends EventEmitter {
       return
     }
 
-    // Ensure the working directory exists
     fs.mkdirSync(this.worktreePath, { recursive: true })
 
     const claudeBin = findClaude()
     console.log(`[runner:${this.agentId}] spawning ${claudeBin} in ${this.worktreePath}`)
 
     this.isRunning = true
+    this.killed = false
     this.process = spawn(claudeBin, this.buildArgs(task), {
       cwd: this.worktreePath,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
+
+    let settled = false
+    const settle = (ev: RunnerEvent) => {
+      if (settled) return
+      settled = true
+      if (this.watchdog) { clearTimeout(this.watchdog); this.watchdog = null }
+      this.onEvent(ev)
+    }
+
+    this.watchdog = setTimeout(() => {
+      console.warn(`[runner:${this.agentId}] task timeout after 5 minutes`)
+      settle({ type: 'error', agentId: this.agentId, message: 'task timed out after 5 minutes' })
+      this.process?.kill('SIGTERM')
+    }, TASK_TIMEOUT_MS)
 
     let buffer = ''
     let lastResult = ''
@@ -72,7 +90,6 @@ export class AgentRunner extends EventEmitter {
       buffer = lines.pop() ?? ''
       for (const line of lines) {
         if (line.trim()) {
-          // Capture the result text from the final result line
           try {
             const parsed = JSON.parse(line)
             if (parsed.type === 'result' && parsed.subtype === 'success' && typeof parsed.result === 'string') {
@@ -91,21 +108,24 @@ export class AgentRunner extends EventEmitter {
     this.process.on('close', (code) => {
       this.isRunning = false
       this.process = null
-      if (code === 0) {
-        this.onEvent({ type: 'complete', agentId: this.agentId, result: lastResult || 'done' })
+      if (this.killed) {
+        settle({ type: 'complete', agentId: this.agentId, result: 'cancelled' })
+      } else if (code === 0) {
+        settle({ type: 'complete', agentId: this.agentId, result: lastResult || 'done' })
       } else {
-        this.onEvent({ type: 'error', agentId: this.agentId, message: `exited with code ${code}` })
+        settle({ type: 'error', agentId: this.agentId, message: `exited with code ${code}` })
       }
     })
 
     this.process.on('error', (err) => {
       this.isRunning = false
       this.process = null
-      this.onEvent({ type: 'error', agentId: this.agentId, message: `spawn error: ${err.message}` })
+      settle({ type: 'error', agentId: this.agentId, message: `spawn error: ${err.message}` })
     })
   }
 
   kill(): void {
+    this.killed = true
     this.process?.kill('SIGTERM')
     this.isRunning = false
   }

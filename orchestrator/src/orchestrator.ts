@@ -57,7 +57,7 @@ export class Orchestrator {
         this.assignTask(cmd.agentId, cmd.task)
         break
       case 'fire_chaos':
-        this.fireChaos()
+        void this.fireChaos().catch(err => console.error('[orchestrator] fireChaos error:', err))
         break
       case 'create_agent':
         this.hireAgent(cmd.id, cmd.sprite, cmd.personality)
@@ -183,6 +183,7 @@ export class Orchestrator {
       if (event.type === 'error') {
         deltaMood(this.db, agentId, -10)
         this.runners.delete(agentId)
+        updateZone(this.db, agentId, 'lounge')
         const idleAgent = this.buildAgentState(agentId, 'idle')
         if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
         this.broadcast({ type: 'feed_entry', entry: {
@@ -199,6 +200,10 @@ export class Orchestrator {
 
   private hireAgent(id: string, sprite: string, personality: string): void {
     if (!id || !id.trim()) return
+    if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+      console.error(`[orchestrator] hireAgent: invalid agent id "${id}"`)
+      return
+    }
     createAgent(this.db, id, sprite, personality)
     try {
       ensureWorktree(id, REPO_PATH)

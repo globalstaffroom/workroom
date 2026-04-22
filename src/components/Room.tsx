@@ -42,10 +42,10 @@ export function Room() {
       width: 700,
       height: 508,
       flexShrink: 0,
-      overflow: 'hidden',
       border: '4px solid #5a4a3a',
       boxShadow: '0 0 0 2px #3a2a1a, 0 12px 60px rgba(0,0,0,0.6)',
       imageRendering: 'pixelated',
+      overflow: 'visible',
     }}>
       {/* Floor — cream/grey tile checkerboard */}
       <div style={{

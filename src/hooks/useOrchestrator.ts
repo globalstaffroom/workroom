@@ -83,7 +83,10 @@ export function useOrchestrator() {
   useEffect(() => {
     handlers = { upsertAgent, setMood, setZone, setBubble, addEntry }
     connect()
-    return () => { handlers = null }
+    return () => {
+      handlers = null
+      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+    }
   }, [])
 
   return { send }

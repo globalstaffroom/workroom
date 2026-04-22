@@ -13,8 +13,8 @@ WS_URL="ws://localhost:7331"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS_MODULE="$SCRIPT_DIR/../orchestrator/node_modules/ws"
 
-node -e "
-const WebSocket = require('$WS_MODULE')
+WORKROOM_WS_MOD="$WS_MODULE" node -e "
+const WebSocket = require(process.env.WORKROOM_WS_MOD)
 const agentId = process.argv[1]
 const task = process.argv[2]
 const timeoutSec = parseInt(process.argv[3] || '120', 10)
