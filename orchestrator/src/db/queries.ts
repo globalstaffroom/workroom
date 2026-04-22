@@ -42,9 +42,10 @@ export function logEvent(db: Database.Database, event: Omit<WorkroomEvent, 'id' 
   )
 }
 
+interface EventRow { id: number; type: string; agent: string; payload: string; created_at: number }
 export function getRecentEvents(db: Database.Database, limit: number): WorkroomEvent[] {
-  return (db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT ?').all(limit) as any[])
-    .map(r => ({ ...r, payload: JSON.parse(r.payload) }))
+  return (db.prepare('SELECT * FROM events ORDER BY created_at DESC LIMIT ?').all(limit) as EventRow[])
+    .map(r => ({ ...r, payload: JSON.parse(r.payload) as Record<string, unknown> }))
 }
 
 export function getRelationship(db: Database.Database, a: string, b: string): Relationship {
@@ -57,12 +58,13 @@ export function getRelationship(db: Database.Database, a: string, b: string): Re
 
 export function deltaTension(db: Database.Database, a: string, b: string, delta: number): void {
   const [first, second] = [a, b].sort()
+  const clamped = Math.max(0, Math.min(100, delta))
   db.prepare(`
     INSERT INTO relationships (agent_a, agent_b, tension) VALUES (?, ?, ?)
     ON CONFLICT(agent_a, agent_b) DO UPDATE SET
       tension = MAX(0, MIN(100, tension + ?)),
       history_count = history_count + 1
-  `).run(first, second, delta, delta)
+  `).run(first, second, clamped, delta)
 }
 
 export function setContext(db: Database.Database, key: string, value: string, setBy: string, project = 'default'): void {
@@ -71,8 +73,13 @@ export function setContext(db: Database.Database, key: string, value: string, se
 
 export function getContext(db: Database.Database, project = 'default'): Record<string, string> {
   const rows = db.prepare(`
-    SELECT key, value FROM context_items WHERE project = ?
-    GROUP BY key HAVING created_at = MAX(created_at)
-  `).all(project) as { key: string; value: string }[]
+    SELECT c.key, c.value FROM context_items c
+    INNER JOIN (
+      SELECT key, MAX(created_at) AS max_ts
+      FROM context_items WHERE project = ?
+      GROUP BY key
+    ) latest ON c.key = latest.key AND c.created_at = latest.max_ts
+    WHERE c.project = ?
+  `).all(project, project) as { key: string; value: string }[]
   return Object.fromEntries(rows.map(r => [r.key, r.value]))
 }
