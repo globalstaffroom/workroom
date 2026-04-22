@@ -4,8 +4,19 @@ import { useFeedStore } from '../store/feedStore'
 import { DramaControls } from './DramaControls'
 import { send } from '../hooks/useOrchestrator'
 
-const AGENT_COLORS: Record<string, string> = {
-  coder: '#58a6ff', tester: '#7ec850', review: '#f0c040', search: '#aa88ff',
+const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#40e0d0']
+
+function hashCode(s: string): number {
+  let h = 0
+  for (const c of s) h = (Math.imul(31, h) + (c.codePointAt(0) ?? 0)) | 0
+  return Math.abs(h)
+}
+
+function agentColor(id: string): string {
+  const known: Record<string, string> = {
+    coder: '#58a6ff', tester: '#7ec850', review: '#f0c040', search: '#aa88ff',
+  }
+  return known[id] ?? DYNAMIC_PALETTE[hashCode(id) % DYNAMIC_PALETTE.length]
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -41,7 +52,7 @@ export function FeedPanel() {
       <div style={{ padding: '8px 14px', borderBottom: '2px solid #1a2030' }}>
         <div style={{ fontSize: 11, color: '#778', letterSpacing: 1, marginBottom: 6, fontFamily: 'monospace' }}>// AGENTS</div>
         {agents.map(agent => {
-          const color = AGENT_COLORS[agent.id] ?? '#888'
+          const color = agentColor(agent.id)
           const dotColor = STATUS_COLORS[agent.status] ?? '#444'
           return (
             <div key={agent.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
