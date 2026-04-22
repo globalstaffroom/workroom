@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3'
-import { getAllAgents, updateZone, deltaMood, logEvent, getAgent, logResult } from './db/queries'
+import { getAllAgents, updateZone, deltaMood, logEvent, getAgent, logResult, createAgent } from './db/queries'
 import { AgentRunner } from './agentRunner'
 import { parseStreamLine, parsedToBubble } from './parser'
 import { ensureWorktree } from './worktree'
@@ -58,6 +58,9 @@ export class Orchestrator {
         break
       case 'fire_chaos':
         this.fireChaos()
+        break
+      case 'create_agent':
+        this.hireAgent(cmd.id, cmd.sprite, cmd.personality)
         break
     }
   }
@@ -192,6 +195,24 @@ export class Orchestrator {
     this.runners.set(agentId, runner)
     runner.spawn(task)
     return taskId
+  }
+
+  private hireAgent(id: string, sprite: string, personality: string): void {
+    if (!id || !id.trim()) {
+      this.broadcast({ type: 'feed_entry', entry: {
+        id: `hire-err-${Date.now()}`, agentId: 'system', color: '#e04040',
+        message: 'error: agent id must not be empty', timestamp: Date.now(),
+      }})
+      return
+    }
+    createAgent(this.db, id, sprite, personality)
+    try {
+      ensureWorktree(id, REPO_PATH)
+    } catch (err) {
+      console.warn(`[orchestrator] worktree setup failed for ${id}:`, err)
+    }
+    const agent = this.buildAgentState(id, 'idle')
+    if (agent) this.broadcast({ type: 'agent_updated', agent })
   }
 }
 

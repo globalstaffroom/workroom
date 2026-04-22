@@ -83,3 +83,32 @@ describe('assignTask — task_result emission', () => {
     vi.restoreAllMocks()
   })
 })
+
+describe('create_agent command', () => {
+  it('inserts the agent and broadcasts agent_updated', () => {
+    const messages: unknown[] = []
+    orch.setBroadcast((msg) => messages.push(msg))
+
+    orch.handleCommand({ type: 'create_agent', id: 'debugger', sprite: '🐛', personality: 'meticulous' })
+
+    const broadcast = (messages as any[]).find(m => m.type === 'agent_updated')
+    expect(broadcast).toBeDefined()
+    expect(broadcast.agent.id).toBe('debugger')
+    expect(broadcast.agent.zone).toBe('lounge')
+    expect(broadcast.agent.status).toBe('idle')
+  })
+
+  it('is idempotent — calling twice does not throw', () => {
+    orch.handleCommand({ type: 'create_agent', id: 'debugger', sprite: '🐛', personality: 'meticulous' })
+    expect(() =>
+      orch.handleCommand({ type: 'create_agent', id: 'debugger', sprite: '🐛', personality: 'meticulous' })
+    ).not.toThrow()
+  })
+
+  it('does not broadcast for empty id', () => {
+    const messages: unknown[] = []
+    orch.setBroadcast((msg) => messages.push(msg))
+    orch.handleCommand({ type: 'create_agent', id: '', sprite: '🐛', personality: 'meticulous' })
+    expect(messages.find((m: any) => m.type === 'agent_updated')).toBeUndefined()
+  })
+})
