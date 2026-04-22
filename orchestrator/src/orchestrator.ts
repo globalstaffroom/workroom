@@ -2,7 +2,7 @@ import Database from 'better-sqlite3'
 import { getAllAgents, updateZone, deltaMood, logEvent, getAgent, logResult } from './db/queries'
 import { AgentRunner } from './agentRunner'
 import { parseStreamLine, parsedToBubble } from './parser'
-import { ensureWorktree, getWorktreePath } from './worktree'
+import { ensureWorktree } from './worktree'
 import { pickChaosEvent } from './dramaEngine'
 import { generateReaction } from './haiku'
 import type { AgentState, Zone, WsMessage, UiCommand, AgentStatus } from '../../src/types'
@@ -127,8 +127,13 @@ export class Orchestrator {
     let worktreePath: string
     try {
       worktreePath = ensureWorktree(agentId, REPO_PATH)
-    } catch {
-      worktreePath = getWorktreePath(agentId)
+    } catch (err) {
+      this.broadcast({ type: 'feed_entry', entry: {
+        id: taskId, agentId, color: agentColor(agentId),
+        message: `error: worktree setup failed — ${err instanceof Error ? err.message : String(err)}`,
+        timestamp: Date.now(),
+      }})
+      return ''
     }
     logEvent(this.db, { type: 'task_assigned', agent: agentId, payload: { task, taskId } })
 
@@ -166,8 +171,9 @@ export class Orchestrator {
         logResult(this.db, agentId, taskId, resultText)
         this.broadcast({ type: 'task_result', agentId, result: resultText, taskId })
         this.broadcast({ type: 'feed_entry', entry: {
-          id: `${Date.now()}`, agentId, color: agentColor(agentId),
-          message: resultText.slice(0, 200), timestamp: Date.now(),
+          id: `${Date.now()}-${Math.random()}`, agentId, color: agentColor(agentId),
+          message: resultText.slice(0, 200), // feed tiles are display-only; full result is in task_result
+          timestamp: Date.now(),
         }})
       }
 
@@ -177,7 +183,7 @@ export class Orchestrator {
         const idleAgent = this.buildAgentState(agentId, 'idle')
         if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
         this.broadcast({ type: 'feed_entry', entry: {
-          id: `${Date.now()}`, agentId, color: agentColor(agentId),
+          id: `${Date.now()}-${Math.random()}`, agentId, color: agentColor(agentId),
           message: `error: ${event.message}`, timestamp: Date.now(),
         }})
       }

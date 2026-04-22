@@ -73,9 +73,13 @@ describe('assignTask — busy agent rejection', () => {
 })
 
 describe('assignTask — task_result emission', () => {
-  it('assignTask returns a taskId string', () => {
+  it('assignTask returns a taskId string', async () => {
+    vi.spyOn(await import('./worktree'), 'ensureWorktree').mockReturnValue('/tmp/fake-search-worktree')
+
     const taskId = (orch as any).assignTask('search', 'say hi')
     expect(typeof taskId).toBe('string')
     expect(taskId).toContain('search')
+
+    vi.restoreAllMocks()
   })
 })
