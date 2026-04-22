@@ -3,6 +3,27 @@ import { useAgentStore } from '../store/agentStore'
 import { Agent } from './Agent'
 import type { Zone } from '../types'
 
+function hashCode(s: string): number {
+  let h = 0
+  for (const c of s) h = (Math.imul(31, h) + (c.codePointAt(0) ?? 0)) | 0
+  return Math.abs(h)
+}
+
+function dynamicPos(agentId: string, zone: Zone): { top: number; left: number } {
+  const h = hashCode(agentId)
+  const zoneBounds: Record<Zone, { top: [number, number]; left: [number, number] }> = {
+    work_area:    { top: [90,  140], left: [60,  280] },
+    lounge:       { top: [70,  110], left: [420, 620] },
+    copy_room:    { top: [280, 340], left: [60,  220] },
+    meeting_room: { top: [290, 340], left: [380, 590] },
+  }
+  const b = zoneBounds[zone]
+  return {
+    top:  b.top[0]  + (h        % (b.top[1]  - b.top[0])),
+    left: b.left[0] + ((h >> 4) % (b.left[1] - b.left[0])),
+  }
+}
+
 // Zone pixel positions per agent — where each agent stands in each zone
 const ZONE_POSITIONS: Record<Zone, Record<string, { top: number; left: number }>> = {
   work_area:    {
@@ -31,7 +52,6 @@ const ZONE_POSITIONS: Record<Zone, Record<string, { top: number; left: number }>
   },
 }
 
-const DEFAULT_POS = { top: 200, left: 300 }
 
 export function Room() {
   const agents = useAgentStore(useShallow(s => Object.values(s.agents)))
@@ -205,7 +225,7 @@ export function Room() {
       {/* Agents rendered over furniture */}
       {agents.map(agent => {
         const zonePos = ZONE_POSITIONS[agent.zone]
-        const pos = zonePos?.[agent.id] ?? DEFAULT_POS
+        const pos = zonePos?.[agent.id] ?? dynamicPos(agent.id, agent.zone)
         return (
           <Agent
             key={agent.id}
