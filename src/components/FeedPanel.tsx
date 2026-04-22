@@ -3,21 +3,7 @@ import { useAgentStore } from '../store/agentStore'
 import { useFeedStore } from '../store/feedStore'
 import { DramaControls } from './DramaControls'
 import { send } from '../hooks/useOrchestrator'
-
-const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#40e0d0']
-
-function hashCode(s: string): number {
-  let h = 0
-  for (const c of s) h = (Math.imul(31, h) + (c.codePointAt(0) ?? 0)) | 0
-  return Math.abs(h)
-}
-
-function agentColor(id: string): string {
-  const known: Record<string, string> = {
-    coder: '#58a6ff', tester: '#7ec850', review: '#f0c040', search: '#aa88ff',
-  }
-  return known[id] ?? DYNAMIC_PALETTE[hashCode(id) % DYNAMIC_PALETTE.length]
-}
+import { agentColor } from '../utils/agentUtils'
 
 const STATUS_COLORS: Record<string, string> = {
   working: '#58a6ff', idle: '#7ec850', waiting: '#f0c040', reacting: '#cc88ff', offline: '#444',

@@ -198,13 +198,7 @@ export class Orchestrator {
   }
 
   private hireAgent(id: string, sprite: string, personality: string): void {
-    if (!id || !id.trim()) {
-      this.broadcast({ type: 'feed_entry', entry: {
-        id: `hire-err-${Date.now()}`, agentId: 'system', color: '#e04040',
-        message: 'error: agent id must not be empty', timestamp: Date.now(),
-      }})
-      return
-    }
+    if (!id || !id.trim()) return
     createAgent(this.db, id, sprite, personality)
     try {
       ensureWorktree(id, REPO_PATH)
@@ -212,10 +206,24 @@ export class Orchestrator {
       console.warn(`[orchestrator] worktree setup failed for ${id}:`, err)
     }
     const agent = this.buildAgentState(id, 'idle')
-    if (agent) this.broadcast({ type: 'agent_updated', agent })
+    if (agent) {
+      this.broadcast({ type: 'agent_updated', agent })
+      this.broadcast({ type: 'feed_entry', entry: {
+        id: `hire-${Date.now()}`, agentId: 'system', color: '#7ec850',
+        message: `✓ ${id} joined the team`, timestamp: Date.now(),
+      }})
+    } else {
+      console.error(`[orchestrator] buildAgentState returned null for newly created agent "${id}"`)
+      this.broadcast({ type: 'feed_entry', entry: {
+        id: `hire-err-${Date.now()}`, agentId: 'system', color: '#e04040',
+        message: `error: could not read agent "${id}" after insert`,
+        timestamp: Date.now(),
+      }})
+    }
   }
 }
 
+// agentColor logic is duplicated in src/utils/agentUtils.ts (frontend process cannot be imported here)
 const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#40e0d0']
 
 function hashCode(s: string): number {
