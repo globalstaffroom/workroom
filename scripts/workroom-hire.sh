@@ -14,7 +14,7 @@ WS_MODULE="$SCRIPT_DIR/../orchestrator/node_modules/ws"
 
 WORKROOM_WS_MOD="$WS_MODULE" node -e "
 const WebSocket = require(process.env.WORKROOM_WS_MOD)
-const [,, agentId, sprite, personality] = process.argv
+const [, agentId, sprite, personality] = process.argv
 const ws = new WebSocket('ws://localhost:7331')
 ws.on('open', () => {
   ws.send(JSON.stringify({ type: 'create_agent', id: agentId, sprite, personality }))
