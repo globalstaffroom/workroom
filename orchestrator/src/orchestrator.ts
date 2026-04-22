@@ -195,6 +195,17 @@ export class Orchestrator {
   }
 }
 
+const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#7fffff']
+
+function hashCode(s: string): number {
+  let h = 0
+  for (const c of s) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0
+  return Math.abs(h)
+}
+
 export function agentColor(id: string): string {
-  return ({ coder: '#58a6ff', tester: '#7ec850', review: '#f0c040', search: '#aa88ff' } as Record<string, string>)[id] ?? '#888'
+  const known: Record<string, string> = {
+    coder: '#58a6ff', tester: '#7ec850', review: '#f0c040', search: '#aa88ff',
+  }
+  return known[id] ?? DYNAMIC_PALETTE[hashCode(id) % DYNAMIC_PALETTE.length]
 }
