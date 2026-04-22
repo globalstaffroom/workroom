@@ -56,6 +56,14 @@ ws.on('message', (data) => {
   }
 })
 
+ws.on('close', () => {
+  if (!done) {
+    process.stderr.write('workroom-dispatch: connection closed before result\n')
+    clearTimeout(timer)
+    process.exit(1)
+  }
+})
+
 ws.on('error', (err) => {
   process.stderr.write('workroom-dispatch: ' + err.message + '\n')
   process.exit(1)
