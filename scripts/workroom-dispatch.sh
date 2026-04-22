@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Usage: workroom-dispatch.sh <agentId> "<task>" [--timeout <seconds>]
+# Usage: workroom-dispatch.sh <agentId> "<task>" [<timeout_seconds>]
 # Dispatches a task to a workroom agent and prints the result to stdout.
 # Exit 0 on success, 1 on agent_busy or timeout.
 
