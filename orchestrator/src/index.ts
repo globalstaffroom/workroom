@@ -9,7 +9,12 @@ import fs from 'fs'
 const WORKROOM_DIR = path.join(os.homedir(), '.workroom')
 const DB_PATH = path.join(WORKROOM_DIR, 'workroom.db')
 const PID_PATH = path.join(WORKROOM_DIR, 'orchestrator.pid')
-const REPO_PATH = path.resolve(__dirname, '../../')
+// When bundled into a Tauri app, __dirname points inside the app bundle.
+// Read the repo path from a config file written at app install time, or fall back to dev path.
+const REPO_PATH_FILE = path.join(os.homedir(), '.workroom', 'repo_path')
+const REPO_PATH = process.env.WORKROOM_REPO_PATH
+  || (fs.existsSync(REPO_PATH_FILE) ? fs.readFileSync(REPO_PATH_FILE, 'utf8').trim() : '')
+  || path.resolve(__dirname, '../../')
 
 fs.mkdirSync(WORKROOM_DIR, { recursive: true })
 
