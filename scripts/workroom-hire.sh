@@ -12,8 +12,8 @@ PERSONALITY="${3:?Usage: workroom-hire.sh <agentId> <sprite> <personality>}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WS_MODULE="$SCRIPT_DIR/../orchestrator/node_modules/ws"
 
-node -e "
-const WebSocket = require('$WS_MODULE')
+WORKROOM_WS_MOD="$WS_MODULE" node -e "
+const WebSocket = require(process.env.WORKROOM_WS_MOD)
 const [,, agentId, sprite, personality] = process.argv
 const ws = new WebSocket('ws://localhost:7331')
 ws.on('open', () => {

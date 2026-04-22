@@ -104,6 +104,7 @@ export function createAgent(
   sprite: string,
   personality: string
 ): void {
+  if (!id || !id.trim()) throw new Error('createAgent: id must not be empty')
   db.prepare(`
     INSERT OR IGNORE INTO agents (id, name, sprite, personality, mood, energy, zone)
     VALUES (?, ?, ?, ?, 50, 100, 'lounge')

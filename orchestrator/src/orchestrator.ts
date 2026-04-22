@@ -195,11 +195,11 @@ export class Orchestrator {
   }
 }
 
-const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#7fffff']
+const DYNAMIC_PALETTE = ['#ff9f7f', '#7fffcf', '#ff7fbf', '#cfff7f', '#7fcfff', '#ffcf7f', '#bf7fff', '#40e0d0']
 
 function hashCode(s: string): number {
   let h = 0
-  for (const c of s) h = (Math.imul(31, h) + c.charCodeAt(0)) | 0
+  for (const c of s) h = (Math.imul(31, h) + (c.codePointAt(0) ?? 0)) | 0
   return Math.abs(h)
 }
 
