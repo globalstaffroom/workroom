@@ -1,11 +1,14 @@
 import Database from 'better-sqlite3'
-import { getAllAgents, updateZone, deltaMood, logEvent, getAgent } from './db/queries'
+import { getAllAgents, updateZone, deltaMood, logEvent, getAgent, logResult } from './db/queries'
 import { AgentRunner } from './agentRunner'
 import { parseStreamLine, parsedToBubble } from './parser'
-import { getWorktreePath } from './worktree'
+import { ensureWorktree, getWorktreePath } from './worktree'
 import { pickChaosEvent } from './dramaEngine'
 import { generateReaction } from './haiku'
 import type { AgentState, Zone, WsMessage, UiCommand, AgentStatus } from '../../src/types'
+import path from 'path'
+
+const REPO_PATH = path.resolve(__dirname, '../../')
 
 type Broadcast = (msg: WsMessage) => void
 
@@ -111,26 +114,30 @@ export class Orchestrator {
     }
   }
 
-  private assignTask(agentId: string, task: string) {
-    if (!task) return
+  private assignTask(agentId: string, task: string): string {
+    if (!task) return ''
 
-    // Double-start guard: kill existing runner before starting a new one
-    const existingRunner = this.runners.get(agentId)
-    if (existingRunner) {
-      console.warn(`[orchestrator] agent ${agentId} already working — killing previous runner`)
-      existingRunner.kill()
-      this.runners.delete(agentId)
+    // Reject if agent is already working
+    if (this.runners.has(agentId)) {
+      this.broadcast({ type: 'agent_busy', agentId })
+      return ''
     }
 
-    const worktreePath = getWorktreePath(agentId)
-    logEvent(this.db, { type: 'task_assigned', agent: agentId, payload: { task } })
+    const taskId = `${agentId}-${Date.now()}`
+    let worktreePath: string
+    try {
+      worktreePath = ensureWorktree(agentId, REPO_PATH)
+    } catch {
+      worktreePath = getWorktreePath(agentId)
+    }
+    logEvent(this.db, { type: 'task_assigned', agent: agentId, payload: { task, taskId } })
 
     updateZone(this.db, agentId, 'work_area')
     const workingAgent = this.buildAgentState(agentId, 'working')
     if (workingAgent) this.broadcast({ type: 'agent_updated', agent: workingAgent })
 
     this.broadcast({ type: 'feed_entry', entry: {
-      id: `${Date.now()}`, agentId, color: agentColor(agentId),
+      id: taskId, agentId, color: agentColor(agentId),
       message: `→ ${task}`, timestamp: Date.now(),
     }})
 
@@ -138,7 +145,6 @@ export class Orchestrator {
       if (event.type === 'line') {
         const parsed = parseStreamLine(event.raw)
         if (!parsed) return
-
         const bubble = parsedToBubble(parsed)
         if (bubble) {
           this.broadcast({ type: 'bubble', agentId, text: bubble, durationMs: 10000 })
@@ -156,24 +162,20 @@ export class Orchestrator {
         const idleAgent = this.buildAgentState(agentId, 'idle')
         if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
 
-        // Broadcast the actual result text if available
-        const resultText = event.result && event.result !== 'done'
-          ? event.result.slice(0, 200)
-          : 'task complete ✓'
+        const resultText = event.result && event.result !== 'done' ? event.result : 'task complete ✓'
+        logResult(this.db, agentId, taskId, resultText)
+        this.broadcast({ type: 'task_result', agentId, result: resultText, taskId })
         this.broadcast({ type: 'feed_entry', entry: {
           id: `${Date.now()}`, agentId, color: agentColor(agentId),
-          message: resultText, timestamp: Date.now(),
+          message: resultText.slice(0, 200), timestamp: Date.now(),
         }})
       }
 
       if (event.type === 'error') {
         deltaMood(this.db, agentId, -10)
         this.runners.delete(agentId)
-
-        // Broadcast idle status on error too
         const idleAgent = this.buildAgentState(agentId, 'idle')
         if (idleAgent) this.broadcast({ type: 'agent_updated', agent: idleAgent })
-
         this.broadcast({ type: 'feed_entry', entry: {
           id: `${Date.now()}`, agentId, color: agentColor(agentId),
           message: `error: ${event.message}`, timestamp: Date.now(),
@@ -183,6 +185,7 @@ export class Orchestrator {
 
     this.runners.set(agentId, runner)
     runner.spawn(task)
+    return taskId
   }
 }
 

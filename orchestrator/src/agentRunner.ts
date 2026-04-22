@@ -31,7 +31,7 @@ export class AgentRunner extends EventEmitter {
   constructor(
     public readonly agentId: string,
     private readonly worktreePath: string,
-    private readonly onEvent: OnEvent,
+    public readonly onEvent: OnEvent,
   ) {
     super()
   }
