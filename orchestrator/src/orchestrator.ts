@@ -3,6 +3,8 @@ import { getAllAgents, updateZone, deltaMood, logEvent, getAgent } from './db/qu
 import { AgentRunner } from './agentRunner'
 import { parseStreamLine, parsedToBubble } from './parser'
 import { getWorktreePath } from './worktree'
+import { pickChaosEvent } from './dramaEngine'
+import { generateReaction } from './haiku'
 import type { AgentState, Zone, WsMessage, UiCommand } from '../../src/types'
 
 type Broadcast = (msg: WsMessage) => void
@@ -41,7 +43,7 @@ export class Orchestrator {
         this.assignTask(cmd.agentId, cmd.task)
         break
       case 'fire_chaos':
-        // implemented in Task 14
+        this.fireChaos()
         break
     }
   }
@@ -58,6 +60,44 @@ export class Orchestrator {
         }
       }
     }, 10 * 60 * 1000)
+  }
+
+  private async fireChaos() {
+    const agents = getAllAgents(this.db)
+    const event = pickChaosEvent(agents)
+
+    logEvent(this.db, { type: 'chaos_event', agent: 'system', payload: { eventId: event.id } })
+
+    this.broadcast({ type: 'drama_event', eventName: event.id, agentId: event.affectedAgents[0], description: event.description })
+    this.broadcast({ type: 'feed_entry', entry: {
+      id: `chaos-${Date.now()}`, agentId: 'system', color: '#e04040',
+      message: `🎲 ${event.description}`, timestamp: Date.now(),
+    }})
+
+    for (const agentId of event.affectedAgents) {
+      const delta = event.moodDeltas[agentId] ?? 0
+      const newMood = deltaMood(this.db, agentId, delta)
+      this.broadcast({ type: 'mood_changed', agentId, mood: newMood })
+
+      if (event.zone) {
+        updateZone(this.db, agentId, event.zone)
+        this.broadcast({ type: 'zone_changed', agentId, zone: event.zone as Zone })
+      }
+
+      const agent = getAgent(this.db, agentId)
+      if (agent && this.dramaLevel >= 20) {
+        const reaction = await generateReaction({
+          name: agent.name, trait: agent.personality,
+          mood: newMood, dramaLevel: this.dramaLevel,
+          event: event.description,
+        })
+        this.broadcast({ type: 'bubble', agentId, text: reaction, durationMs: 5000 })
+        this.broadcast({ type: 'feed_entry', entry: {
+          id: `react-${Date.now()}-${agentId}`, agentId, color: agentColor(agentId),
+          message: reaction, timestamp: Date.now(),
+        }})
+      }
+    }
   }
 
   private assignTask(agentId: string, task: string) {
