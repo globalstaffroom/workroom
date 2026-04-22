@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx src/index.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:bundle": "esbuild src/index.ts --bundle --platform=node --outfile=../src-tauri/resources/orchestrator.js --external:better-sqlite3 --external:bufferutil --external:utf-8-validate"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^25.6.0",
     "@types/ws": "^8.18.1",
+    "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"

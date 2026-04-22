@@ -6,22 +6,46 @@ pub struct OrchestratorHandle(pub Mutex<Option<Child>>);
 
 mod commands {
     use super::OrchestratorHandle;
-    use tauri::State;
+    use tauri::{AppHandle, Manager, State};
 
     #[tauri::command]
-    pub fn start_orchestrator(state: State<OrchestratorHandle>) -> Result<(), String> {
+    pub fn start_orchestrator(app: AppHandle, state: State<OrchestratorHandle>) -> Result<(), String> {
         let mut guard = state.0.lock().map_err(|e| e.to_string())?;
         if guard.is_some() {
             return Ok(()); // already running
         }
+
+        // In production, the orchestrator is bundled as a resource.
+        // In dev, fall back to running the TypeScript source via tsx.
+        let child = match app.path().resource_dir() {
+            Ok(res_dir) => {
+                let bundle = res_dir.join("orchestrator.js");
+                if bundle.exists() {
+                    // Production mode: run the pre-bundled orchestrator
+                    std::process::Command::new("node")
+                        .arg(&bundle)
+                        .current_dir(&res_dir)
+                        .spawn()
+                        .map_err(|e| format!("failed to spawn orchestrator (prod): {e}"))?
+                } else {
+                    // Dev mode fallback
+                    dev_spawn()?
+                }
+            }
+            Err(_) => dev_spawn()?,
+        };
+
+        *guard = Some(child);
+        Ok(())
+    }
+
+    fn dev_spawn() -> Result<std::process::Child, String> {
         let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-        let child = std::process::Command::new("node")
+        std::process::Command::new("node")
             .args(["--import", "tsx/esm", "orchestrator/src/index.ts"])
             .current_dir(&cwd)
             .spawn()
-            .map_err(|e| format!("failed to spawn orchestrator: {e}"))?;
-        *guard = Some(child);
-        Ok(())
+            .map_err(|e| format!("failed to spawn orchestrator (dev): {e}"))
     }
 
     #[tauri::command]
@@ -46,7 +70,7 @@ pub fn run() {
             let handle: AppHandle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let state: State<OrchestratorHandle> = handle.state();
-                let _ = commands::start_orchestrator(state);
+                let _ = commands::start_orchestrator(handle.clone(), state);
             });
             Ok(())
         })

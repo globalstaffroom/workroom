@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { AgentState, FeedEntry, WsMessage } from './index'
+import type { AgentState, FeedEntry } from './index'
 
 describe('types', () => {
   it('AgentState has required fields', () => {

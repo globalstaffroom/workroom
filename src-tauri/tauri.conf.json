@@ -6,15 +6,15 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && bash scripts/build-orchestrator.sh",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "title": "workroom",
-        "width": 800,
-        "height": 600
+        "width": 960,
+        "height": 640
       }
     ],
     "security": {
@@ -30,6 +30,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "resources/orchestrator.js": "orchestrator.js",
+      "resources/node_modules/better-sqlite3": "node_modules/better-sqlite3"
+    }
   }
 }
