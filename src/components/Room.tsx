@@ -210,7 +210,7 @@ export function Room() {
           <Agent
             key={agent.id}
             agent={agent}
-            style={{ top: pos.top, left: pos.left, transition: 'top 0.8s ease-in-out, left 0.8s ease-in-out' }}
+            style={{ top: pos.top, left: pos.left, transition: 'top 1.6s cubic-bezier(0.4, 0, 0.2, 1), left 1.6s cubic-bezier(0.4, 0, 0.2, 1)' }}
           />
         )
       })}

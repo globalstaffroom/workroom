@@ -13,25 +13,25 @@ interface Props {
 export function DramaControls({ dramaLevel, onDramaChange, onChaos }: Props) {
   const color = DRAMA_COLOR(dramaLevel)
   return (
-    <div style={{ padding: '10px 12px', borderBottom: '2px solid #1a2030' }}>
-      <div style={{ fontSize: 7, color: '#334', letterSpacing: 1, marginBottom: 8, fontFamily: 'monospace' }}>// DRAMA</div>
+    <div style={{ padding: '10px 14px', borderBottom: '2px solid #1a2030' }}>
+      <div style={{ fontSize: 11, color: '#778', letterSpacing: 1, marginBottom: 8, fontFamily: 'monospace' }}>// DRAMA</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <input
           type="range" min={0} max={100} value={dramaLevel}
           onChange={e => onDramaChange(Number(e.target.value))}
           style={{ flex: 1, accentColor: color }}
         />
-        <span style={{ fontSize: 7, color, width: 46, textAlign: 'right', fontFamily: 'monospace', letterSpacing: 0.5 }}>
+        <span style={{ fontSize: 11, color, width: 52, textAlign: 'right', fontFamily: 'monospace', fontWeight: 'bold' }}>
           {DRAMA_LABEL(dramaLevel)}
         </span>
       </div>
       <button
         onClick={onChaos}
         style={{
-          width: '100%', padding: '7px 0',
+          width: '100%', padding: '8px 0',
           background: '#3a0808', border: '2px solid #e04040', borderBottom: '4px solid #800',
-          color: '#e04040', fontSize: 7, cursor: 'pointer',
-          fontFamily: 'monospace', letterSpacing: 1,
+          color: '#e04040', fontSize: 11, cursor: 'pointer',
+          fontFamily: 'monospace', letterSpacing: 1, fontWeight: 'bold',
         }}
       >
         STIR THE POT
