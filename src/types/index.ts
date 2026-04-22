@@ -33,6 +33,8 @@ export type WsMessage =
   | { type: 'mood_changed';  agentId: string; mood: number }
   | { type: 'zone_changed';  agentId: string; zone: Zone }
   | { type: 'drama_event';   eventName: string; agentId: string; description: string }
+  | { type: 'task_result';   agentId: string; result: string; taskId: string }
+  | { type: 'agent_busy';    agentId: string }
 
 // Commands sent from UI → orchestrator
 export type UiCommand =

@@ -1,4 +1,7 @@
 import Database from 'better-sqlite3'
+import path from 'path'
+import fs from 'fs'
+import os from 'os'
 
 export interface Agent {
   id: string; name: string; sprite: string
@@ -82,4 +85,15 @@ export function getContext(db: Database.Database, project = 'default'): Record<s
     WHERE c.project = ?
   `).all(project, project) as { key: string; value: string }[]
   return Object.fromEntries(rows.map(r => [r.key, r.value]))
+}
+
+export function logResult(db: Database.Database, agentId: string, taskId: string, result: string): void {
+  db.prepare('INSERT INTO events (type, agent, payload) VALUES (?, ?, ?)').run(
+    'task_result',
+    agentId,
+    JSON.stringify({ taskId, result })
+  )
+  const dir = path.join(os.homedir(), '.workroom', 'results')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, `${agentId}-${taskId}.txt`), result, 'utf8')
 }
