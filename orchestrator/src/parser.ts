@@ -47,7 +47,17 @@ export function parseStreamLine(raw: string): ParsedLine | null {
   }
 }
 
-/** Convert a ParsedLine to a short display string for speech bubbles (max 60 chars) */
+/** Full feed message — no truncation on text, tool input shows full path/command */
+export function parsedToFeedMessage(line: ParsedLine): string | null {
+  switch (line.kind) {
+    case 'text':     return line.text
+    case 'tool_use': return `${line.tool}: ${line.input}`
+    case 'complete': return null
+    case 'error':    return `error: ${line.message}`
+  }
+}
+
+/** Short string for room speech bubbles only (60 chars max) */
 export function parsedToBubble(line: ParsedLine): string | null {
   switch (line.kind) {
     case 'text':     return line.text.slice(0, 60)

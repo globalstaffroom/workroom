@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3'
 import { getAllAgents, updateZone, deltaMood, logEvent, getAgent, logResult, createAgent } from './db/queries'
 import { AgentRunner } from './agentRunner'
-import { parseStreamLine, parsedToBubble } from './parser'
+import { parseStreamLine, parsedToBubble, parsedToFeedMessage } from './parser'
 import { ensureWorktree } from './worktree'
 import { pickChaosEvent } from './dramaEngine'
 import { generateReaction } from './haiku'
@@ -154,11 +154,14 @@ export class Orchestrator {
         const parsed = parseStreamLine(event.raw)
         if (!parsed) return
         const bubble = parsedToBubble(parsed)
+        const feedMessage = parsedToFeedMessage(parsed)
         if (bubble) {
           this.broadcast({ type: 'bubble', agentId, text: bubble, durationMs: 10000 })
+        }
+        if (feedMessage) {
           this.broadcast({ type: 'feed_entry', entry: {
             id: `${Date.now()}-${Math.random()}`, agentId, color: agentColor(agentId),
-            message: bubble, timestamp: Date.now(),
+            message: feedMessage, timestamp: Date.now(),
           }})
         }
       }
@@ -175,7 +178,7 @@ export class Orchestrator {
         this.broadcast({ type: 'task_result', agentId, result: resultText, taskId })
         this.broadcast({ type: 'feed_entry', entry: {
           id: `${Date.now()}-${Math.random()}`, agentId, color: agentColor(agentId),
-          message: resultText.slice(0, 200), // feed tiles are display-only; full result is in task_result
+          message: resultText,
           timestamp: Date.now(),
         }})
       }

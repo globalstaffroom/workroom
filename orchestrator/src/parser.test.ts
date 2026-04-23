@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseStreamLine, type ParsedLine } from './parser'
+import { parseStreamLine, parsedToBubble, parsedToFeedMessage, type ParsedLine } from './parser'
 
 describe('parseStreamLine', () => {
   it('parses assistant text message', () => {
@@ -31,5 +31,33 @@ describe('parseStreamLine', () => {
   it('returns null for unknown lines', () => {
     expect(parseStreamLine('not json')).toBeNull()
     expect(parseStreamLine(JSON.stringify({ type: 'system' }))).toBeNull()
+  })
+})
+
+describe('parsedToFeedMessage', () => {
+  it('returns full text untruncated', () => {
+    const long = 'x'.repeat(300)
+    expect(parsedToFeedMessage({ kind: 'text', text: long })).toBe(long)
+  })
+
+  it('returns full tool input untruncated', () => {
+    const cmd = 'npm run build && npm test && echo done'
+    expect(parsedToFeedMessage({ kind: 'tool_use', tool: 'Bash', input: cmd })).toBe(`Bash: ${cmd}`)
+  })
+
+  it('returns null for complete', () => {
+    expect(parsedToFeedMessage({ kind: 'complete' })).toBeNull()
+  })
+})
+
+describe('parsedToBubble', () => {
+  it('truncates text to 60 chars', () => {
+    const result = parsedToBubble({ kind: 'text', text: 'x'.repeat(100) })
+    expect(result?.length).toBe(60)
+  })
+
+  it('truncates tool input to 40 chars in bubble', () => {
+    const result = parsedToBubble({ kind: 'tool_use', tool: 'Bash', input: 'x'.repeat(60) })
+    expect(result).toBe(`Bash: ${'x'.repeat(40)}`)
   })
 })
