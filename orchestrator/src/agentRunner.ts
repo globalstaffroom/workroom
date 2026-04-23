@@ -125,8 +125,10 @@ export class AgentRunner extends EventEmitter {
   }
 
   kill(): void {
-    this.killed = true
-    this.process?.kill('SIGTERM')
+    if (this.process) {
+      this.killed = true
+      this.process.kill('SIGTERM')
+    }
     this.isRunning = false
   }
 }

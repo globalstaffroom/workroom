@@ -59,13 +59,14 @@ export function getRelationship(db: Database.Database, a: string, b: string): Re
 
 export function deltaTension(db: Database.Database, a: string, b: string, delta: number): void {
   const [first, second] = [a, b].sort()
-  const clamped = Math.max(0, Math.min(100, delta))
+  // SQL-level MAX/MIN is the authoritative clamp; JS clamp guards the initial insert value only
+  const initialTension = Math.max(0, Math.min(100, delta))
   db.prepare(`
     INSERT INTO relationships (agent_a, agent_b, tension) VALUES (?, ?, ?)
     ON CONFLICT(agent_a, agent_b) DO UPDATE SET
       tension = MAX(0, MIN(100, tension + ?)),
       history_count = history_count + 1
-  `).run(first, second, clamped, delta)
+  `).run(first, second, initialTension, delta)
 }
 
 export function setContext(db: Database.Database, key: string, value: string, setBy: string, project = 'default'): void {

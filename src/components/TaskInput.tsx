@@ -9,9 +9,9 @@ export function TaskInput() {
   const [busyMsg, setBusyMsg] = useState('')
   const agents = useAgentStore(useShallow(s => Object.values(s.agents)))
 
-  // Default to first available agent once agents load
+  // Keep selection valid — reset to first agent when roster changes and current id vanishes
   useEffect(() => {
-    if (!agentId && agents.length > 0) setAgentId(agents[0].id)
+    if (agents.length > 0 && !agents.find(a => a.id === agentId)) setAgentId(agents[0].id)
   }, [agents, agentId])
 
   const selectedAgent = agents.find(a => a.id === agentId)

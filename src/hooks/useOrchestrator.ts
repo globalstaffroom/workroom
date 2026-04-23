@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useAgentStore } from '../store/agentStore'
 import { useFeedStore } from '../store/feedStore'
+import { agentColor } from '../utils/agentUtils'
 import type { WsMessage, UiCommand } from '../types'
 
 const WS_URL = 'ws://localhost:7331'
@@ -9,7 +10,6 @@ const WS_URL = 'ws://localhost:7331'
 let socket: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 const pendingQueue: string[] = []
-
 
 export function send(cmd: UiCommand) {
   const msg = JSON.stringify(cmd)
@@ -52,6 +52,26 @@ function handleMessage(msg: WsMessage) {
     case 'zone_changed':
       handlers.setZone(msg.agentId, msg.zone)
       break
+    case 'task_result':
+      handlers.addEntry({
+        id: msg.taskId,
+        agentId: msg.agentId,
+        message: msg.result,
+        timestamp: Date.now(),
+        color: agentColor(msg.agentId),
+      })
+      break
+    case 'agent_busy':
+      break
+    case 'drama_event':
+      handlers.addEntry({
+        id: `drama-${Date.now()}`,
+        agentId: msg.agentId,
+        message: `🎲 ${msg.description}`,
+        timestamp: Date.now(),
+        color: '#e04040',
+      })
+      break
   }
 }
 
@@ -61,12 +81,17 @@ function connect() {
 
   socket = new WebSocket(WS_URL)
 
+  socket.onerror = (err) => console.error('[ws] connection error:', err)
+
   socket.onopen = () => {
-    while (pendingQueue.length) socket!.send(pendingQueue.shift()!)
+    // Discard stale commands — server may have restarted with fresh state
+    pendingQueue.length = 0
   }
 
   socket.onmessage = (e) => {
-    try { handleMessage(JSON.parse(e.data) as WsMessage) } catch {}
+    try { handleMessage(JSON.parse(e.data) as WsMessage) } catch (err) {
+      console.error('[ws] message parse error:', err)
+    }
   }
 
   socket.onclose = () => {
@@ -86,6 +111,8 @@ export function useOrchestrator() {
     return () => {
       handlers = null
       if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
+      socket?.close()
+      socket = null
     }
   }, [])
 
